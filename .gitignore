@@ -33,6 +33,7 @@ Module.markers
 *.xz
 *.lzo
 *.patch
+!Armbian-sun8i-patches/*
 *.gcno
 standby.code
 resume1.code
