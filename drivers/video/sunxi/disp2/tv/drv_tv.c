@@ -274,7 +274,7 @@ s32 tv_init(void)
 			tve_low_set_reg_base(i, g_tv_info.screen[i].base_address);
 			tve_clk_init(i);
 			tve_clk_config(i, g_tv_info.screen[i].tv_mode);
-			//tve_clk_enable(i);
+			tve_clk_enable(i);
 		}
 		tv_detect_enable();
 

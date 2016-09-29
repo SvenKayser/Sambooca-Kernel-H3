@@ -2001,17 +2001,17 @@ static int mmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 	/* Order's important: probe SDIO, then SD, then MMC */
 	// pr_info("*******************Try sdio*******************\n");
 	if (!mmc_attach_sdio(host)){
-		pr_info("*******************sdio init ok*******************\n");
+		// pr_info("*******************sdio init ok*******************\n");
 		return 0;
 	}
 	// pr_info("*******************Try sd *******************\n");
 	if (!mmc_attach_sd(host)){
- 		pr_info("*******************sd init ok*******************\n");
+ 		// pr_info("*******************sd init ok*******************\n");
 		return 0;
 	}
 	// pr_info("*******************Try mmc*******************\n");
 	if (!mmc_attach_mmc(host)){
-		pr_info("*******************mmc init ok *******************\n");
+		// pr_info("*******************mmc init ok *******************\n");
 		return 0;
 	}
 
@@ -2467,6 +2467,7 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 	switch (mode) {
 	case PM_HIBERNATION_PREPARE:
 	case PM_SUSPEND_PREPARE:
+	case PM_RESTORE_PREPARE:
 
 		spin_lock_irqsave(&host->lock, flags);
 		if (mmc_bus_needs_resume(host)) {

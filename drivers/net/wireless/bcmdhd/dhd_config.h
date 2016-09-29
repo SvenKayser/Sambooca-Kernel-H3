@@ -7,11 +7,6 @@
 #include <dhd.h>
 #include <wlioctl.h>
 #include <proto/802.11.h>
-#ifdef POWER_OFF_IN_SUSPEND
-#include <wl_android.h>
-#include <bcmsdbus.h>
-#include <linux/mmc/sdio_func.h>
-#endif
 
 #define FW_PATH_AUTO_SELECT 1
 extern char firmware_path[MOD_PARAM_PATHLEN];
@@ -73,6 +68,8 @@ typedef struct conf_pkt_filter_del {
 #endif
 
 typedef struct dhd_conf {
+	uint	chip;			/* chip number */
+	uint	chiprev;		/* chip revision */
 	wl_mac_list_ctrl_t fw_by_mac;	/* Firmware auto selection by MAC */
 	wl_mac_list_ctrl_t nv_by_mac;	/* NVRAM auto selection by MAC */
 	char fw_path[MOD_PARAM_PATHLEN];		/* Firmware path */
@@ -105,15 +102,12 @@ typedef struct dhd_conf {
 	int spect;
 } dhd_conf_t;
 
-extern void *bcmsdh_get_drvdata(void);
+int dhd_conf_get_mac(dhd_pub_t *dhd, bcmsdh_info_t *sdh, uint8 *mac);
 void dhd_conf_set_fw_name_by_mac(dhd_pub_t *dhd, bcmsdh_info_t *sdh, char *fw_path);
 void dhd_conf_set_nv_name_by_mac(dhd_pub_t *dhd, bcmsdh_info_t *sdh, char *nv_path);
-void dhd_conf_set_fw_name_by_chip(dhd_pub_t *dhd, char *dst, char *src);
+void dhd_conf_set_fw_name_by_chip(dhd_pub_t *dhd, char *fw_path);
 #if defined(HW_OOB)
 void dhd_conf_set_hw_oob_intr(bcmsdh_info_t *sdh, uint chip);
-#endif
-#if defined(CUSTOMER_HW) && defined(CONFIG_DHD_USE_STATIC_BUF)
-void* dhd_conf_prealloc(int section, unsigned long size);
 #endif
 void dhd_conf_set_fw_path(dhd_pub_t *dhd, char *fw_path);
 void dhd_conf_set_nv_path(dhd_pub_t *dhd, char *nv_path);
@@ -139,36 +133,13 @@ void dhd_conf_set_glom(dhd_pub_t *dhd);
 void dhd_conf_set_ampdu_ba_wsize(dhd_pub_t *dhd);
 void dhd_conf_set_spect(dhd_pub_t *dhd);
 int dhd_conf_read_config(dhd_pub_t *dhd);
+int dhd_conf_set_chiprev(dhd_pub_t *dhd, uint chip, uint chiprev);
+uint dhd_conf_get_chip(void *context);
+uint dhd_conf_get_chiprev(void *context);
 int dhd_conf_preinit(dhd_pub_t *dhd);
+int dhd_conf_reset(dhd_pub_t *dhd);
 int dhd_conf_attach(dhd_pub_t *dhd);
 void dhd_conf_detach(dhd_pub_t *dhd);
-
-#ifdef POWER_OFF_IN_SUSPEND
-extern struct net_device *g_netdev;
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-extern int g_wifi_on;
-#if defined(WL_ENABLE_P2P_IF)
-extern struct net_device *g_p2pnetdev;
-extern bool g_p2pnet_enabled;
-#endif
-#ifdef WL_CFG80211
-void wl_cfg80211_stop(void);
-void wl_cfg80211_send_disconnect(void);
-void wl_cfg80211_user_sync(bool lock);
-extern s32 wl_cfg80211_up2(void *para);
-extern s32 wl_cfg80211_down2(void *para);
-void wl_cfgp2p_start(void);
-void wl_cfgp2p_stop(void);
-void dhd_cleanup_virt_ifaces2(struct net_device *net);
-#endif
-void dhd_wlfc_cleanup2(struct net_device *net);
-extern int dhd_dev_init_ioctl(struct net_device *dev);
-void dhd_cleanup_wlfc(struct net_device *net);
-
-#endif
-void dhd_conf_wifi_suspend(struct sdio_func *func);
-void dhd_conf_register_wifi_suspend(struct sdio_func *func);
-void dhd_conf_unregister_wifi_suspend(struct sdio_func *func);
-#endif
+void *dhd_get_pub(struct net_device *dev);
 
 #endif /* _dhd_config_ */

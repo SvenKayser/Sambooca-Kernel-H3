@@ -29,8 +29,10 @@ typedef struct
 	u32                     pseudo_palette [FB_MAX][16];
 	wait_queue_head_t       wait[3];
 	unsigned long           wait_count[3];
+#if 0
 	struct task_struct      *vsync_task[3];
 	ktime_t                 vsync_timestamp[3];
+#endif
 
 	int                     blank[3];
 }fb_info_t;
@@ -40,9 +42,6 @@ static phys_addr_t bootlogo_addr = 0;
 static int bootlogo_sz = 0;
 
 extern disp_drv_info g_disp_drv;
-
-#define FBHANDTOID(handle)  ((handle) - 100)
-#define FBIDTOHAND(ID)  ((ID) + 100)
 
 static struct __fb_addr_para g_fb_addr;
 
@@ -524,6 +523,8 @@ static int fb_wait_for_vsync(struct fb_info *info)
 	return 0;
 }
 
+static int wait_for_vsync_flag;
+
 static int sunxi_fb_pan_display(struct fb_var_screeninfo *var,struct fb_info *info)
 {
 	u32 sel = 0;
@@ -535,8 +536,6 @@ static int sunxi_fb_pan_display(struct fb_var_screeninfo *var,struct fb_info *in
 
 	for(sel = 0; sel < num_screens; sel++) {
 		if(sel==g_fbi.fb_mode[info->node]) {
-			u32 buffer_num = 1;
-			u32 y_offset = 0;
 			s32 chan = g_fbi.layer_hdl[info->node][0];
 			s32 layer_id = g_fbi.layer_hdl[info->node][1];
 			disp_layer_config config;
@@ -550,10 +549,10 @@ static int sunxi_fb_pan_display(struct fb_var_screeninfo *var,struct fb_info *in
 					__wrn("fb %d, get_layer_config(%d,%d,%d) fail\n", info->node, sel, chan, layer_id);
 					return -1;
 				}
-				config.info.fb.crop.x = ((long long)var->xoffset) << 32;
-				config.info.fb.crop.y = ((unsigned long long)(var->yoffset + y_offset)) << 32;;
-				config.info.fb.crop.width = ((long long)var->xres) << 32;
-				config.info.fb.crop.height = ((long long)(var->yres / buffer_num)) << 32;
+				config.info.fb.crop.x = ((long long)(var->xoffset)) << 32;
+				config.info.fb.crop.y = ((long long)(var->yoffset)) << 32;
+				config.info.fb.crop.width = ((long long)(var->xres)) << 32;
+				config.info.fb.crop.height = ((long long)(var->yres)) << 32;
 				if(0 != mgr->set_layer_config(mgr, &config, 1)) {
 					__wrn("fb %d, set_layer_config(%d,%d,%d) fail\n", info->node, sel, chan, layer_id);
 					return -1;
@@ -562,7 +561,10 @@ static int sunxi_fb_pan_display(struct fb_var_screeninfo *var,struct fb_info *in
 		}
 	}
 
-	fb_wait_for_vsync(info);
+	if (wait_for_vsync_flag) {
+		wait_for_vsync_flag = 0;
+		fb_wait_for_vsync(info);
+	}
 
 	return 0;
 }
@@ -615,25 +617,25 @@ static int sunxi_fb_set_par(struct fb_info *info)
 		if(sel==g_fbi.fb_mode[info->node]) {
 			struct fb_var_screeninfo *var = &info->var;
 			struct fb_fix_screeninfo * fix = &info->fix;
-			u32 buffer_num = 1;
-			u32 y_offset = 0;
 			s32 chan = g_fbi.layer_hdl[info->node][0];
 			s32 layer_id = g_fbi.layer_hdl[info->node][1];
 			disp_layer_config config;
 			struct disp_manager *mgr = g_disp_drv.mgr[sel];
 
-			if(mgr && mgr->get_layer_config && mgr->set_layer_config) {
+			if(mgr && mgr->get_layer_config) {
 				config.channel = chan;
 				config.layer_id = layer_id;
 				mgr->get_layer_config(mgr, &config, 1);
 			}
 
 			var_to_disp_fb(&(config.info.fb), var, fix);
-			config.info.fb.crop.x = var->xoffset;
-			config.info.fb.crop.y = var->yoffset + y_offset;
-			config.info.fb.crop.width = var->xres;
-			config.info.fb.crop.height = var->yres / buffer_num;
-			if(mgr && mgr->get_layer_config && mgr->set_layer_config)
+			config.info.fb.crop.x = ((long long)(var->xoffset)) << 32;
+			config.info.fb.crop.y = ((long long)(var->yoffset)) << 32;
+			config.info.fb.crop.width = ((long long)(var->xres)) << 32;
+			config.info.fb.crop.height = ((long long)(var->yres)) << 32;
+			config.info.screen_win.width = var->xres;
+			config.info.screen_win.height = var->yres;
+			if(mgr && mgr->set_layer_config)
 				mgr->set_layer_config(mgr, &config, 1);
 		}
 	}
@@ -687,10 +689,12 @@ static int sunxi_fb_cursor(struct fb_info *info, struct fb_cursor *cursor)
 
 s32 drv_disp_vsync_event(u32 sel)
 {
+#if 0
 	g_fbi.vsync_timestamp[sel] = ktime_get();
 
 	if(g_fbi.vsync_task[sel])
 		wake_up_process(g_fbi.vsync_task[sel]);
+#endif
 
 	return 0;
 }
@@ -730,6 +734,7 @@ static void send_vsync_work_2(struct work_struct *work)
 }
 #endif
 
+#if 0
 static int vsync_proc(u32 disp)
 {
 	char buf[64];
@@ -758,6 +763,7 @@ static int vsync_thread(void *parg)
 
 	return 0;
 }
+#endif
 
 void DRV_disp_int_process(u32 sel)
 {
@@ -874,7 +880,7 @@ static int sunxi_fb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long a
 
 	case FBIO_WAITFORVSYNC:
 	{
-		//ret = fb_wait_for_vsync(info);
+		wait_for_vsync_flag = 1;
 		break;
 	}
 
@@ -1151,7 +1157,7 @@ static s32 display_fb_request(u32 fb_id, disp_fb_create_info *fb_para)
 
 	for(sel = 0; sel < num_screens; sel++) {
 		if(sel == fb_para->fb_mode)	{
-			u32 y_offset = 0, src_width = xres, src_height = yres;
+			u32 src_width = xres, src_height = yres;
 			disp_video_timings tt;
 			struct disp_manager *mgr = NULL;
 			mgr = g_disp_drv.mgr[sel];
@@ -1190,13 +1196,13 @@ static s32 display_fb_request(u32 fb_id, disp_fb_create_info *fb_para)
 			}
 
 			config.info.screen_win.width = (0 == fb_para->output_width)? src_width:fb_para->output_width;
-			config.info.screen_win.height = (0 == fb_para->output_height)? src_width:fb_para->output_height;
+			config.info.screen_win.height = (0 == fb_para->output_height)? src_height:fb_para->output_height;
 
 			config.info.mode = LAYER_MODE_BUFFER;
 			config.info.alpha_mode = 1;
 			config.info.alpha_value = 0xff;
-			config.info.fb.crop.x = ((long long)0) << 32;
-			config.info.fb.crop.y = ((long long)y_offset) << 32;
+			config.info.fb.crop.x = 0LL;
+			config.info.fb.crop.y = 0LL;
 			config.info.fb.crop.width = ((long long)src_width) << 32;
 			config.info.fb.crop.height = ((long long)src_height) << 32;
 			config.info.screen_win.x = 0;
@@ -1337,6 +1343,7 @@ s32 fb_init(struct platform_device *pdev)
 	for(i=0; i<num_screens; i++) {
 		char task_name[25];
 
+#if 0
 		sprintf(task_name, "vsync proc %d", i);
 		g_fbi.vsync_task[i] = kthread_create(vsync_thread, (void*)i, task_name);
 		if(IS_ERR(g_fbi.vsync_task[i])) {
@@ -1347,6 +1354,7 @@ s32 fb_init(struct platform_device *pdev)
 		} else {
 			sched_setscheduler_nocheck(g_fbi.vsync_task[i], SCHED_FIFO, &param);
 		}
+#endif
 	}
 */
 	init_waitqueue_head(&g_fbi.wait[0]);
@@ -1446,7 +1454,7 @@ s32 fb_exit(void)
 
 	for(fb_id=0; fb_id<FB_MAX; fb_id++) {
 		if(g_fbi.fbinfo[fb_id] != NULL) {
-			display_fb_release(FBIDTOHAND(fb_id));
+			display_fb_release(fb_id);
 		}
 	}
 

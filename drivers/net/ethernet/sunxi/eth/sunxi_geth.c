@@ -156,6 +156,7 @@ struct geth_priv {
 
 	spinlock_t lock;
 	spinlock_t tx_lock;
+	int gpio_power_hd;
 };
 
 #ifdef CONFIG_GETH_PHY_POWER
@@ -264,6 +265,8 @@ static void desc_print(struct dma_desc *desc, int size)
 static int geth_power_on(struct geth_priv *priv)
 {
 	int value;
+	if (gpio_is_valid(priv->gpio_power_hd))
+		gpio_set_value(priv->gpio_power_hd, 1);
 #ifdef CONFIG_GETH_PHY_POWER
 	struct regulator **regu;
 	int ret = 0, i = 0;
@@ -327,6 +330,8 @@ err:
 static void geth_power_off(struct geth_priv *priv)
 {
 	int value;
+	if (gpio_is_valid(priv->gpio_power_hd))
+		gpio_set_value(priv->gpio_power_hd, 0);
 #ifdef CONFIG_GETH_PHY_POWER
 	struct regulator **regu = priv->power;
 	int i = 0;
@@ -1642,6 +1647,15 @@ static int geth_script_parse(struct platform_device *pdev)
 	default:
 		priv->phy_ext = INT_PHY;
 		break;
+	}
+
+	priv->gpio_power_hd = -1;
+	type = script_get_item("gmac_phy_power", "gmac_phy_power_en", &item);
+	if (SCIRPT_ITEM_VALUE_TYPE_PIO == type) {
+		if (!gpio_request(item.gpio.gpio, NULL)) {
+			gpio_direction_output(item.gpio.gpio, 1);
+			priv->gpio_power_hd = item.gpio.gpio;
+		}
 	}
 
 #ifdef CONFIG_GETH_PHY_POWER

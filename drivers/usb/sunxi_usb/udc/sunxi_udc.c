@@ -57,7 +57,7 @@ static u32 usbd_port_no = 0;
 static sunxi_udc_io_t g_sunxi_udc_io;
 static u32 usb_connect = 0;
 static u32 is_controller_alive = 0;
-static u8 is_udc_enable = 0;   /* is udc enable by gadget? */
+static u8 is_udc_enable = 1;   /* is udc enable by gadget? */
 
 #ifdef CONFIG_USB_SUNXI_USB0_OTG
 static struct platform_device *g_udc_pdev = NULL;
