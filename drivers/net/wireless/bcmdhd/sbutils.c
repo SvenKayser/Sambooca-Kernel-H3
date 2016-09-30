@@ -1084,4 +1084,4 @@ sb_dumpregs(si_t *sih, struct bcmstrbuf *b)
 	sb_setcoreidx(sih, origidx);
 	INTR_RESTORE(sii, intr_val);
 }
-#endif	
+#endif

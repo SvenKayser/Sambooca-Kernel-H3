@@ -230,7 +230,7 @@ typedef struct {
 
 #if defined(BCMASSERT_LOG)
 #define BCMASSERT_SUPPORT
-#endif 
+#endif
 
 /* Macros for doing definition and get/set of bitfields
  * Usage example, e.g. a three-bit field (bits 4-6):

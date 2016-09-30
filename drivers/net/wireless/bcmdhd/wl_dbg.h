@@ -385,7 +385,7 @@ extern int osl_printf(const char *fmt, ...);
 #endif
 #define WL_PCIE(args)		do {if (wl_msg_level2 & WL_PCIE_VAL) WL_PRINT(args);} while (0)
 #define WL_PCIE_ON()		(wl_msg_level2 & WL_PCIE_VAL)
-#endif 
+#endif
 
 extern uint32 wl_msg_level;
 extern uint32 wl_msg_level2;

@@ -94,7 +94,7 @@ typedef long unsigned int size_t;
 #endif
 #endif	/* == 2.6.18 */
 #endif	/* __KERNEL__ */
-#endif  /* !defined(LINUX_HYBRID) || defined(LINUX_PORT) */
+#endif /* !defined(LINUX_HYBRID) || defined(LINUX_PORT) */
 
 
 /* Do not support the (u)int64 types with strict ansi for GNU C */
@@ -132,7 +132,7 @@ typedef long unsigned int size_t;
 
 #endif /* linux && __KERNEL__ */
 
-#endif 
+#endif
 
 
 /* use the default typedefs in the next section of this file */
@@ -272,7 +272,7 @@ typedef float64 float_t;
 	#define BWL_COMPILER_ARMCC
 #else
 	#error "Unknown compiler!"
-#endif 
+#endif
 
 
 #ifndef INLINE
@@ -284,7 +284,7 @@ typedef float64 float_t;
 		#define INLINE	__inline
 	#else
 		#define INLINE
-	#endif 
+	#endif
 #endif /* INLINE */
 
 #undef TYPEDEF_BOOL

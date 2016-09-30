@@ -2,7 +2,7 @@
  * Driver O/S-independent utility routines
  *
  * $Copyright Open Broadcom Corporation$
- * $Id: bcmutils.c 488316 2014-06-30 15:22:21Z $
+ * $Id: bcmutils.c 496061 2014-08-11 06:14:48Z $
  */
 
 #include <bcm_cfg.h>
@@ -735,7 +735,7 @@ prpkt(const char *msg, osl_t *osh, void *p0)
 	for (p = p0; p; p = PKTNEXT(osh, p))
 		prhex(NULL, PKTDATA(osh, p), PKTLEN(osh, p));
 }
-#endif	
+#endif
 
 /* Takes an Ethernet frame and sets out-of-bound PKTPRIO.
  * Also updates the inplace vlan tag if requested.
@@ -866,6 +866,23 @@ pktgetdscp(uint8 *pktdata, uint pktlen, uint8 *dscp)
 	}
 
 	return rc;
+}
+
+/* Add to adjust the 802.1x priority */
+void
+pktset8021xprio(void *pkt, int prio)
+{
+	struct ether_header *eh;
+	uint8 *pktdata;
+	if(prio == PKTPRIO(pkt))
+		return;
+	pktdata = (uint8 *)PKTDATA(OSH_NULL, pkt);
+	ASSERT(ISALIGNED((uintptr)pktdata, sizeof(uint16)));
+	eh = (struct ether_header *) pktdata;
+	if (eh->ether_type == hton16(ETHER_TYPE_802_1X)) {
+		ASSERT(prio >= 0 && prio <= MAXPRIO);
+		PKTSETPRIO(pkt, prio);
+	}
 }
 
 /* The 0.5KB string table is not removed by compiler even though it's unused */
@@ -1526,7 +1543,7 @@ bcm_format_flags(const bcm_bit_desc_t *bd, uint32 flags, char* buf, int len)
 
 	return (int)(p - buf);
 }
-#endif 
+#endif
 
 /* print bytes formatted as hex to a string. return the resulting string length */
 int
@@ -1972,7 +1989,7 @@ bcm_format_ssid(char* buf, const uchar ssid[], uint ssid_len)
 
 	return (int)(p - buf);
 }
-#endif 
+#endif
 
 #endif /* BCMDRIVER */
 
@@ -2003,9 +2020,9 @@ process_nvram_vars(char *varbuf, unsigned int len)
 		for (n=1; n<len; n++) {
 			if (varbuf[n] == '\n')
 				break;
-			printf("%c", varbuf[n]);
+			printk("%c", varbuf[n]);
 		}
-		printf("\n");
+		printk("\n");
 	}
 
 	for (n = 0; n < len; n++) {
@@ -2252,7 +2269,7 @@ bcm_ip_cksum(uint8 *buf, uint32 len, uint32 sum)
 #define BCM_MWBMAP_AUDIT(mwb)   do {} while (0)
 #define MWBMAP_ASSERT(exp)		do {} while (0)
 #define MWBMAP_DBG(x)
-#endif  /* !BCM_MWBMAP_DEBUG */
+#endif /* !BCM_MWBMAP_DEBUG */
 
 
 typedef struct bcm_mwbmap {     /* Hierarchical multiword bitmap allocator    */
@@ -2751,6 +2768,45 @@ id16_map_fini(osl_t *osh, void * id16_map_hndl)
 	MFREE(osh, id16_map, ID16_MAP_SZ(total_ids));
 
 	return NULL;
+}
+
+void
+id16_map_clear(void * id16_map_hndl, uint16 total_ids, uint16 start_val16)
+{
+	uint16 idx, val16;
+	id16_map_t * id16_map;
+
+	ASSERT(total_ids > 0);
+	ASSERT((start_val16 + total_ids) < ID16_INVALID);
+
+	id16_map = (id16_map_t *)id16_map_hndl;
+	if (id16_map == NULL) {
+		return;
+	}
+
+	id16_map->total = total_ids;
+	id16_map->start = start_val16;
+	id16_map->failures = 0;
+
+	/* Populate stack with 16bit id values, commencing with start_val16 */
+	id16_map->stack_idx = 0;
+	val16 = start_val16;
+
+	for (idx = 0; idx < total_ids; idx++, val16++) {
+		id16_map->stack_idx = idx;
+		id16_map->stack[id16_map->stack_idx] = val16;
+	}
+
+#if defined(BCM_DBG) && defined(BCM_DBG_ID16)
+	if (id16_map->dbg) {
+		id16_map_dbg_t *id16_map_dbg = (id16_map_dbg_t *)id16_map->dbg;
+
+		id16_map_dbg->total = total_ids;
+		for (idx = 0; idx < total_ids; idx++) {
+			id16_map_dbg->avail[idx] = TRUE;
+		}
+	}
+#endif /* BCM_DBG && BCM_DBG_ID16 */
 }
 
 uint16 BCMFASTPATH /* Allocate a unique 16bit id */

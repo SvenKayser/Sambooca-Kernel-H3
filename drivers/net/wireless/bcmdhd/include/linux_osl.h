@@ -3,7 +3,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: linux_osl.h 491170 2014-07-15 06:23:58Z $
+ * $Id: linux_osl.h 503131 2014-09-17 12:16:08Z $
  */
 
 #ifndef _linux_osl_h_
@@ -33,10 +33,6 @@ extern int osl_static_mem_init(osl_t *osh, void *adapter);
 extern int osl_static_mem_deinit(osl_t *osh, void *adapter);
 extern void osl_set_bus_handle(osl_t *osh, void *bus_handle);
 extern void* osl_get_bus_handle(osl_t *osh);
-#ifdef EXYNOS5433_PCIE_WAR
-extern void exynos_pcie_set_l1_exit(void);
-extern void exynos_pcie_clear_l1_exit(void);
-#endif /* EXYNOS5433_PCIE_WAR */
 
 /* Global ASSERT type */
 extern uint32 g_assert_type;
@@ -57,7 +53,7 @@ extern void osl_assert(const char *exp, const char *file, int line);
 			#define ASSERT(exp)
 		#endif /* GCC_VERSION > 30100 */
 	#endif /* __GNUC__ */
-#endif 
+#endif
 
 /* bcm_prefetch_32B */
 static inline void bcm_prefetch_32B(const uint8 *addr, const int cachelines_32B)
@@ -69,7 +65,7 @@ static inline void bcm_prefetch_32B(const uint8 *addr, const int cachelines_32B)
 		case 2: __asm__ __volatile__("pld\t%a0" :: "p"(addr + 32) : "cc");
 		case 1: __asm__ __volatile__("pld\t%a0" :: "p"(addr +  0) : "cc");
 	}
-#endif 
+#endif
 }
 
 /* microsecond delay */
@@ -154,6 +150,20 @@ extern uint osl_malloc_failed(osl_t *osh);
 #define	DMA_FREE_CONSISTENT_FORCE32(osh, va, size, pa, dmah) \
 	osl_dma_free_consistent((osh), (void*)(va), (size), (pa))
 
+#if defined(BCMPCIE)
+#if defined(CONFIG_DHD_USE_STATIC_BUF) && defined(DHD_USE_STATIC_FLOWRING)
+#define	DMA_ALLOC_CONSISTENT_STATIC(osh, size, align, tot, pap, dmah, idx) \
+	osl_dma_alloc_consistent_static((osh), (size), (align), (tot), (pap), (idx))
+#define	DMA_FREE_CONSISTENT_STATIC(osh, va, size, pa, dmah, idx) \
+	osl_dma_free_consistent_static((osh), (void*)(va), (size), (pa), (idx))
+
+extern void *osl_dma_alloc_consistent_static(osl_t *osh, uint size, uint16 align,
+	uint *tot, dmaaddr_t *pap, uint16 idx);
+extern void osl_dma_free_consistent_static(osl_t *osh, void *va, uint size, dmaaddr_t pa,
+	uint16 idx);
+#endif /* CONFIG_DHD_USE_STATIC_BUF && DHD_USE_STATIC_FLOWRING */
+#endif /* BCMPCIE */
+
 extern uint osl_dma_consistent_align(void);
 extern void *osl_dma_alloc_consistent(osl_t *osh, uint size, uint16 align,
 	uint *tot, dmaaddr_t *pap);
@@ -192,7 +202,7 @@ extern void osl_dma_unmap(osl_t *osh, uint pa, uint size, int direction);
 	#define OSL_PREFETCH(ptr)		BCM_REFERENCE(ptr)
 
 	#define OSL_ARCH_IS_COHERENT()		NULL
-#endif 
+#endif
 
 /* register access macros */
 #if defined(BCMSDIO)
@@ -210,7 +220,7 @@ extern void osl_pcie_rreg(osl_t *osh, ulong addr, void *v, uint size);
 		osl_pcie_rreg(osh, (uintptr)(r), (void *)&__osl_v, sizeof(*(r))); \
 		__osl_v; \
 	})
-#endif 
+#endif
 
 #if defined(BCM47XX_ACP_WAR)
 	#define SELECT_BUS_WRITE(osh, mmap_op, bus_op) ({BCM_REFERENCE(osh); mmap_op;})
@@ -225,7 +235,7 @@ extern void osl_pcie_rreg(osl_t *osh, ulong addr, void *v, uint size);
 #else
 	#define SELECT_BUS_WRITE(osh, mmap_op, bus_op) ({BCM_REFERENCE(osh); mmap_op;})
 	#define SELECT_BUS_READ(osh, mmap_op, bus_op) ({BCM_REFERENCE(osh); mmap_op;})
-#endif 
+#endif
 #endif /* BCM47XX_ACP_WAR */
 
 #define OSL_ERROR(bcmerror)	osl_error(bcmerror)
@@ -258,26 +268,6 @@ extern int osl_error(int bcmerror);
 
 /* register access macros */
 
-#ifdef EXYNOS5433_PCIE_WAR
-#define R_REG(osh, r) (\
-	SELECT_BUS_READ(osh, \
-		({ \
-			__typeof(*(r)) __osl_v; \
-			exynos_pcie_set_l1_exit();	\
-			switch (sizeof(*(r))) { \
-				case sizeof(uint8):	__osl_v = \
-					readb((volatile uint8*)(r)); break; \
-				case sizeof(uint16):	__osl_v = \
-					readw((volatile uint16*)(r)); break; \
-				case sizeof(uint32):	__osl_v = \
-					readl((volatile uint32*)(r)); break; \
-			} \
-			exynos_pcie_clear_l1_exit();	\
-			__osl_v; \
-		}), \
-		OSL_READ_REG(osh, r)) \
-)
-#else
 #define R_REG(osh, r) (\
 	SELECT_BUS_READ(osh, \
 		({ \
@@ -294,21 +284,7 @@ extern int osl_error(int bcmerror);
 		}), \
 		OSL_READ_REG(osh, r)) \
 )
-#endif /* EXYNOS5433_PCIE_WAR */
 
-#ifdef EXYNOS5433_PCIE_WAR
-#define W_REG(osh, r, v) do { \
-	exynos_pcie_set_l1_exit();	\
-	SELECT_BUS_WRITE(osh, \
-		switch (sizeof(*(r))) { \
-			case sizeof(uint8):	writeb((uint8)(v), (volatile uint8*)(r)); break; \
-			case sizeof(uint16):	writew((uint16)(v), (volatile uint16*)(r)); break; \
-			case sizeof(uint32):	writel((uint32)(v), (volatile uint32*)(r)); break; \
-		}, \
-		(OSL_WRITE_REG(osh, r, v))); \
-		exynos_pcie_clear_l1_exit();	\
-	} while (0)
-#else
 #define W_REG(osh, r, v) do { \
 	SELECT_BUS_WRITE(osh, \
 		switch (sizeof(*(r))) { \
@@ -318,7 +294,6 @@ extern int osl_error(int bcmerror);
 		}, \
 		(OSL_WRITE_REG(osh, r, v))); \
 	} while (0)
-#endif /* EXYNOS5433_PCIE_WAR */
 
 #define	AND_REG(osh, r, v)		W_REG(osh, (r), R_REG(osh, r) & (v))
 #define	OR_REG(osh, r, v)		W_REG(osh, (r), R_REG(osh, r) | (v))
@@ -340,7 +315,7 @@ extern int osl_error(int bcmerror);
 #define	OSL_GETCYCLES(x)	rdtscl((x))
 #else
 #define OSL_GETCYCLES(x)	((x) = 0)
-#endif 
+#endif
 
 /* dereference an address that may cause a bus exception */
 #define	BUSPROBE(val, addr)	({ (val) = R_REG(NULL, (addr)); 0; })
@@ -689,7 +664,7 @@ extern void osl_pkt_frmfwder(osl_t *osh, void *skbs, int skb_cnt,
 extern void osl_pkt_frmfwder(osl_t *osh, void *skbs, int skb_cnt);
 #define PKTFRMFWDER(osh, skbs, skb_cnt) \
 	osl_pkt_frmfwder(((osl_t *)osh), (void *)(skbs), (skb_cnt))
-#endif 
+#endif
 
 
 /** GMAC Forwarded packet tagging for reduced cache flush/invalidate.
@@ -982,4 +957,64 @@ extern int bcmp(const void *b1, const void *b2, size_t len);
 extern void bzero(void *b, size_t len);
 #endif /* ! BCMDRIVER */
 
+typedef struct sec_cma_info {
+	struct sec_mem_elem *sec_alloc_list;
+	struct sec_mem_elem *sec_alloc_list_tail;
+} sec_cma_info_t;
+
+#ifdef BCM_SECURE_DMA
+
+#define	SECURE_DMA_MAP(osh, va, size, direction, p, dmah, pcma, offset) \
+	osl_sec_dma_map((osh), (va), (size), (direction), (p), (dmah), (pcma), (offset))
+#define	SECURE_DMA_DD_MAP(osh, va, size, direction, p, dmah) \
+	osl_sec_dma_dd_map((osh), (va), (size), (direction), (p), (dmah))
+#define	SECURE_DMA_MAP_TXMETA(osh, va, size, direction, p, dmah, pcma) \
+	osl_sec_dma_map_txmeta((osh), (va), (size), (direction), (p), (dmah), (pcma))
+#define	SECURE_DMA_UNMAP(osh, pa, size, direction, p, dmah, pcma, offset) \
+	osl_sec_dma_unmap((osh), (pa), (size), (direction), (p), (dmah), (pcma), (offset))
+#define	SECURE_DMA_UNMAP_ALL(osh, pcma) \
+osl_sec_dma_unmap_all((osh), (pcma))
+
+#if defined(__ARM_ARCH_7A__)
+#define ACP_WAR_ENAB() 0
+#define ACP_WIN_LIMIT 0
+#define arch_is_coherent() 0
+
+#define CMA_BUFSIZE_4K	4096
+#define CMA_BUFSIZE_2K	2048
+#define CMA_BUFSIZE_512	512
+
+#define	CMA_BUFNUM		2048
+#define SEC_CMA_COHERENT_BLK 0x8000 /* 32768 */
+#define SEC_CMA_COHERENT_MAX 32
+#define CMA_DMA_DESC_MEMBLOCK	(SEC_CMA_COHERENT_BLK * SEC_CMA_COHERENT_MAX)
+#define CMA_DMA_DATA_MEMBLOCK	(CMA_BUFSIZE_4K*CMA_BUFNUM)
+#define	CMA_MEMBLOCK		(CMA_DMA_DESC_MEMBLOCK + CMA_DMA_DATA_MEMBLOCK)
+#define CONT_ARMREGION	0x02		/* Region CMA */
+#else
+#define CONT_MIPREGION	0x00		/* To access the MIPs mem, Not yet... */
+#endif /* !defined __ARM_ARCH_7A__ */
+
+#define SEC_DMA_ALIGN	(1<<16)
+typedef struct sec_mem_elem {
+	size_t			size;
+	int				direction;
+	phys_addr_t		pa_cma;     /* physical  address */
+	void			*va;        /* virtual address of driver pkt */
+	dma_addr_t		dma_handle; /* bus address assign by linux */
+	void			*vac;       /* virtual address of cma buffer */
+	struct	sec_mem_elem	*next;
+} sec_mem_elem_t;
+
+extern dma_addr_t osl_sec_dma_map(osl_t *osh, void *va, uint size, int direction, void *p,
+	hnddma_seg_map_t *dmah, void *ptr_cma_info, uint offset);
+extern dma_addr_t osl_sec_dma_dd_map(osl_t *osh, void *va, uint size, int direction, void *p,
+	hnddma_seg_map_t *dmah);
+extern dma_addr_t osl_sec_dma_map_txmeta(osl_t *osh, void *va, uint size,
+  int direction, void *p, hnddma_seg_map_t *dmah, void *ptr_cma_info);
+extern void osl_sec_dma_unmap(osl_t *osh, dma_addr_t dma_handle, uint size, int direction,
+	void *p, hnddma_seg_map_t *map, void *ptr_cma_info, uint offset);
+extern void osl_sec_dma_unmap_all(osl_t *osh, void *ptr_cma_info);
+
+#endif /* BCM_SECURE_DMA */
 #endif	/* _linux_osl_h_ */

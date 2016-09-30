@@ -58,4 +58,4 @@ int miniopt(miniopt_t *t, char **argv);
 	}
 #endif
 
-#endif  /* MINI_OPT_H  */
+#endif /* MINI_OPT_H  */

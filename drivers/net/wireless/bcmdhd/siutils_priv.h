@@ -196,7 +196,7 @@ extern bool sb_taclear(si_t *sih, bool details);
 
 #if defined(BCMDBG_PHYDUMP)
 extern void sb_dumpregs(si_t *sih, struct bcmstrbuf *b);
-#endif 
+#endif
 
 /* Wake-on-wireless-LAN (WOWL) */
 extern bool sb_pci_pmecap(si_t *sih);
@@ -239,7 +239,7 @@ extern uint ai_wrap_reg(si_t *sih, uint32 offset, uint32 mask, uint32 val);
 
 #if defined(BCMDBG_PHYDUMP)
 extern void ai_dumpregs(si_t *sih, struct bcmstrbuf *b);
-#endif 
+#endif
 
 
 #define ub_scan(a, b, c) do {} while (0)

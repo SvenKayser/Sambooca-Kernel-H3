@@ -92,7 +92,7 @@
 #define DHD_NOCHECKDIED_ON()	0
 #define DHD_PNO_ON()		0
 
-#endif 
+#endif
 
 #define DHD_LOG(args)
 

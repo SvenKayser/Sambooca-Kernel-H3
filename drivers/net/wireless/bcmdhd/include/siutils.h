@@ -363,7 +363,7 @@ extern bool si_taclear(si_t *sih, bool details);
 
 #if defined(BCMDBG_PHYDUMP)
 extern void si_dumpregs(si_t *sih, struct bcmstrbuf *b);
-#endif 
+#endif
 
 extern uint32 si_ccreg(si_t *sih, uint32 offset, uint32 mask, uint32 val);
 extern uint32 si_pciereg(si_t *sih, uint32 offset, uint32 mask, uint32 val, uint type);

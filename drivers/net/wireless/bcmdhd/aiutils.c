@@ -1094,4 +1094,4 @@ ai_dumpregs(si_t *sih, struct bcmstrbuf *b)
 			    R_REG(osh, &ai->itcr));
 	}
 }
-#endif	
+#endif

@@ -686,7 +686,7 @@ not match our unaligned address for < 2.6.24
 #define WL_ISR(i, d, p)         wl_isr((i), (d))
 #else
 #define WL_ISR(i, d, p)         wl_isr((i), (d), (p))
-#endif  /* < 2.6.20 */
+#endif /* < 2.6.20 */
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0))
 #define netdev_priv(dev) dev->priv
