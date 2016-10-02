@@ -15,6 +15,17 @@ config SH_MIPI_DSI
 config SH_LCD_MIPI_DSI
 	bool
 
+config SUNXI_LEGACY_VSYNC
+	bool "Optional legacy VSync handling for sunxi display"
+	---help---
+	  This enables to fall back to legacy (dirty) VSync handling
+	  by setting the corresponding property to 1 in 
+	  /proc/disp/legacy_vsync
+	  Enabling this will have an unnoticeable small performance
+	  impact on rendering on the framebuffer, but allows to
+	  fix some issues with unexpected screen tearing on legacy
+	  implementation.
+
 source "drivers/char/agp/Kconfig"
 
 source "drivers/video/fbtft/Kconfig"

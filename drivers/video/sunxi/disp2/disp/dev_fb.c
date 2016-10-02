@@ -15,6 +15,7 @@
 #include <linux/kernel.h>
 #include <linux/fb.h>
 #include <linux/memblock.h>
+#include <linux/proc_fs.h>
 
 
 typedef struct
@@ -523,6 +524,8 @@ static int fb_wait_for_vsync(struct fb_info *info)
 	return 0;
 }
 
+static int legacy_vsync_flag = 0;
+
 static int wait_for_vsync_flag;
 
 static int sunxi_fb_pan_display(struct fb_var_screeninfo *var,struct fb_info *info)
@@ -561,10 +564,21 @@ static int sunxi_fb_pan_display(struct fb_var_screeninfo *var,struct fb_info *in
 		}
 	}
 
+	#ifdef CONFIG_SUNXI_LEGACY_VSYNC
+
+	if (legacy_vsync_flag || wait_for_vsync_flag) {
+		wait_for_vsync_flag = 0;
+		fb_wait_for_vsync(info);
+	}	
+
+	#else
+
 	if (wait_for_vsync_flag) {
 		wait_for_vsync_flag = 0;
 		fb_wait_for_vsync(info);
 	}
+
+	#endif
 
 	return 0;
 }
@@ -1485,3 +1499,71 @@ static int __init bootlogo_parse(char *str)
 __setup("fb_base=", bootlogo_parse);
 #endif
 
+// procnode to bypass patched vsync behaviour
+
+#ifdef CONFIG_SUNXI_LEGACY_VSYNC
+
+	static int legacy_vsync_proc_node_read(char *page, char **start, off_t off,	
+	 int count, int *eof, void *data)
+	{
+		char *buf;
+		
+		buf = kmalloc(count, GFP_KERNEL);
+		if (!buf)
+			return -ENOMEM;
+
+		*buf = legacy_vsync_flag+'0';
+				
+		memcpy(page,buf,1);
+		kfree(buf);
+		return 1;
+	}
+
+	static int legacy_vsync_proc_node_write(struct file *file, const char __user *buffer,
+	 unsigned long count, void *data)
+	{
+		char *buf;
+
+		if (count < 1)
+			return -EINVAL;
+
+		buf = kmalloc(count, GFP_KERNEL);
+		if (!buf)
+			return -ENOMEM;
+
+		if (copy_from_user(buf, buffer, count)) {
+			kfree(buf);
+			return -EFAULT;
+		}
+
+		if(!strncmp("1",(char*)buf,1))
+			legacy_vsync_flag = 1;
+		else
+			legacy_vsync_flag = 0;	
+
+		kfree(buf);
+		return count;
+	}
+
+	static int legacy_vsync_proc_node_init(void)
+	{
+		struct proc_dir_entry *legacy_sync_proc_root;
+		struct proc_dir_entry * legacy_sync_proc_node;
+		
+		legacy_sync_proc_root = proc_mkdir("disp",NULL); //TODO: This should probably take into account, that the directory could actually be presenet
+		legacy_sync_proc_node = create_proc_entry("sunxi_legacy_vsync",0664,legacy_sync_proc_root); //TODO: Should set grp to gid video
+		if (IS_ERR(legacy_sync_proc_node)){
+			printk("Cannot create /proc/disp/sunxi_legacy_vsync");
+			return -1;
+		} else {
+			legacy_sync_proc_node->data = NULL;
+			legacy_sync_proc_node->read_proc = legacy_vsync_proc_node_read;
+			legacy_sync_proc_node->write_proc = legacy_vsync_proc_node_write;
+
+		}
+		return 0;
+	}
+
+subsys_initcall(legacy_vsync_proc_node_init);
+
+#endif
