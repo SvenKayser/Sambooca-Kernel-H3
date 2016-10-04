@@ -119,4 +119,4 @@ module_exit(sw_rfkill_exit);
 
 MODULE_DESCRIPTION("sunxi-rfkill driver");
 MODULE_AUTHOR("Aaron.magic<mgaic@reuuimllatech.com>");
-MODULE_LICENSE(GPL);
+MODULE_LICENSE("GPL");
