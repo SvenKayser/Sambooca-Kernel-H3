@@ -18,6 +18,8 @@
 #include <linux/proc_fs.h>
 
 
+
+
 typedef struct
 {
 	struct device           *dev;
@@ -37,6 +39,11 @@ typedef struct
 
 	int                     blank[3];
 }fb_info_t;
+
+static int legacy_vsync_flag;
+#ifdef CONFIG_SUNXI_LEGACY_VSYNC
+static int legacy_vsync_proc_node_init(void);
+#endif
 
 static fb_info_t g_fbi;
 static phys_addr_t bootlogo_addr = 0;
@@ -524,7 +531,7 @@ static int fb_wait_for_vsync(struct fb_info *info)
 	return 0;
 }
 
-static int legacy_vsync_flag = 0;
+
 
 static int wait_for_vsync_flag;
 
@@ -1349,6 +1356,12 @@ s32 fb_init(struct platform_device *pdev)
 
 	__inf("[DISP] %s\n", __func__);
 
+#ifdef CONFIG_SUNXI_LEGACY_VSYNC
+	legacy_vsync_proc_node_init();
+#endif
+
+	legacy_vsync_flag = 0;	
+
 #ifndef CONFIG_ARCH_SUN8IW8
        fb_parse_bootlogo_base(&bootlogo_addr, &bootlogo_sz);
 #endif
@@ -1499,8 +1512,6 @@ static int __init bootlogo_parse(char *str)
 __setup("fb_base=", bootlogo_parse);
 #endif
 
-// procnode to bypass patched vsync behaviour
-
 #ifdef CONFIG_SUNXI_LEGACY_VSYNC
 
 	static int legacy_vsync_proc_node_read(char *page, char **start, off_t off,	
@@ -1564,6 +1575,6 @@ __setup("fb_base=", bootlogo_parse);
 		return 0;
 	}
 
-subsys_initcall(legacy_vsync_proc_node_init);
+//subsys_initcall(legacy_vsync_proc_node_init);
 
 #endif

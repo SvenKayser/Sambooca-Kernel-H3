@@ -13,6 +13,7 @@
 #include "dev_disp.h"
 #include <linux/pm_runtime.h>
 
+
 disp_drv_info g_disp_drv;
 
 #define MY_BYTE_ALIGN(x) ( ( (x + (4*1024-1)) >> 12) << 12)             /* alloc based on 4K byte */
