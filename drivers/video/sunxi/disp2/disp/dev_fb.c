@@ -705,7 +705,7 @@ static int sunxi_fb_cursor(struct fb_info *info, struct fb_cursor *cursor)
 {
 	__inf("sunxi_fb_cursor\n");
 
-	return 0;
+	return -EINVAL;	/* just to force soft_cursor() call */
 }
 
 s32 drv_disp_vsync_event(u32 sel)
